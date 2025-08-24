@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Social Media</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+    }
+    header {
+      background: #4267B2;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      padding: 20px;
+    }
+    .sidebar, .main, .profile {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .sidebar {
+      flex: 1;
+      margin-right: 15px;
+      max-width: 250px;
+    }
+    .main {
+      flex: 2;
+      margin-right: 15px;
+    }
+    .profile {
+      flex: 1;
+    }
+    .post {
+      background: #fff;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .post img {
+      max-width: 100%;
+      border-radius: 5px;
+    }
+    .comment {
+      margin-left: 20px;
+      font-size: 0.9em;
+      color: #555;
+    }
+    button {
+      background: #4267B2;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #365899;
+    }
+    input, textarea {
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .like {
+      color: red;
+      cursor: pointer;
+    }
+    .follow {
+      background: orange;
+      margin-top: 10px;
+    }
+    .user-avatar {
+      width: 50px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌐 Mini Social Media</h1>
+  </header>
+
+  <div class="container">
+    <!-- Sidebar: All Users -->
+    <div class="sidebar">
+      <h3>All Users</h3>
+      <div id="users"></div>
+    </div>
+
+    <!-- Main Feed -->
+    <div class="main">
+      <h3>Create Post</h3>
+      <textarea id="postText" placeholder="What's on your mind?"></textarea>
+      <input type="text" id="postImg" placeholder="Image URL (optional)">
+      <button onclick="createPost()">Post</button>
+      <hr>
+      <h3>Feed</h3>
+      <div id="feed"></div>
+    </div>
+
+    <!-- Profile -->
+    <div class="profile">
+      <h3>User Login</h3>
+      <input id="username" type="text" placeholder="Username">
+      <input id="avatar" type="text" placeholder="Avatar URL">
+      <button onclick="register()">Register</button>
+      <button onclick="login()">Login</button>
+      <p id="profile-info"></p>
+    </div>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem("users")) || {};
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    let currentUser = localStorage.getItem("currentUser") || null;
+    let follows = JSON.parse(localStorage.getItem("follows")) || {};
+
+    // Register new user
+    function register(){
+      const user = document.getElementById("username").value;
+      const avatar = document.getElementById("avatar").value || "https://via.placeholder.com/50";
+      if(users[user]){
+        alert("User already exists!");
+        return;
+      }
+      users[user] = {avatar};
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("Registered successfully!");
+      loadUsers();
+    }
+
+    // Login
+    function login(){
+      const user = document.getElementById("username").value;
+      if(!users[user]){
+        alert("No such user!");
+        return;
+      }
+      currentUser=user;
+      localStorage.setItem("currentUser", user);
+      document.getElementById("profile-info").innerHTML = `
+        <img src="${users[user].avatar}" class="user-avatar">
+        Logged in as <b>${user}</b>
+      `;
+      loadUsers();
+      renderFeed();
+    }
+
+    // Create Post
+    function createPost(){
+      if(!currentUser){ alert("Please login first!"); return; }
+      const text = document.getElementById("postText").value;
+      const img = document.getElementById("postImg").value;
+      if(text.trim()===""){ alert("Empty post!"); return; }
+      posts.unshift({user: currentUser, text, img, likes:[], comments:[]});
+      localStorage.setItem("posts", JSON.stringify(posts));
+      document.getElementById("postText").value="";
+      document.getElementById("postImg").value="";
+      renderFeed();
+    }
+
+    // Render Feed
+    function renderFeed(){
+      const feed = document.getElementById("feed");
+      feed.innerHTML="";
+      posts.forEach((p,idx)=>{
+        const div = document.createElement("div");
+        div.className="post";
+        div.innerHTML=`
+          <p><img src="${users[p.user].avatar}" class="user-avatar">${p.user}</p>
+          <p>${p.text}</p>
+          ${p.img?`<img src="${p.img}">`:""}
+          <p>
+            <span class="like" onclick="likePost(${idx})">❤️ ${p.likes.length}</span>
+          </p>
+          <div>
+            <input type="text" placeholder="Add comment" onkeypress="if(event.key==='Enter'){addComment(${idx},this.value);this.value=''}">
+          </div>
+          ${p.comments.map(c=>`<p class="comment"><b>${c.user}:</b> ${c.text}</p>`).join("")}
+        `;
+        feed.appendChild(div);
+      });
+    }
+
+    // Like Post
+    function likePost(i){
+      if(!currentUser){ alert("Login first!"); return; }
+      const likes = posts[i].likes;
+      if(likes.includes(currentUser)){
+        posts[i].likes = likes.filter(u=>u!==currentUser);
+      } else {
+        likes.push(currentUser);
+      }
+      localStorage.setItem("posts", JSON.stringify(posts));
+      renderFeed();
+    }
+
+    // Add Comment
+    function addComment(i,text){
+      if(!currentUser){ alert("Login first!"); return; }
+      posts[i].comments.push({user:currentUser,text});
+      localStorage.setItem("posts", JSON.stringify(posts));
+      renderFeed();
+    }
+
+    // Load Users
+    function loadUsers(){
+      const uDiv=document.getElementById("users");
+      uDiv.innerHTML="";
+      Object.keys(users).forEach(u=>{
+        if(u===currentUser) return;
+        const btnText = follows[currentUser]?.includes(u) ? "Unfollow" : "Follow";
+        uDiv.innerHTML+=`
+          <p><img src="${users[u].avatar}" class="user-avatar">${u}
+          <button class="follow" onclick="toggleFollow('${u}')">${btnText}</button></p>
+        `;
+      });
+    }
+
+    // Follow/Unfollow
+    function toggleFollow(u){
+      if(!currentUser){ alert("Login first!"); return; }
+      if(!follows[currentUser]) follows[currentUser]=[];
+      if(follows[currentUser].includes(u)){
+        follows[currentUser] = follows[currentUser].filter(f=>f!==u);
+      } else {
+        follows[currentUser].push(u);
+      }
+      localStorage.setItem("follows", JSON.stringify(follows));
+      loadUsers();
+    }
+
+    // Init
+    if(currentUser){
+      document.getElementById("profile-info").innerHTML = `
+        <img src="${users[currentUser].avatar}" class="user-avatar">
+        Logged in as <b>${currentUser}</b>
+      `;
+    }
+    loadUsers();
+    renderFeed();
+  </script>
+</body>
+</html>

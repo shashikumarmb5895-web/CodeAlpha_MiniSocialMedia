@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple E-commerce Store</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    header {
+      background: #333;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+    }
+    header button {
+      background: orange;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .product {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .product img {
+      max-width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .cart, .login {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 350px;
+      height: 100%;
+      background: white;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+      padding: 20px;
+      transition: right 0.3s ease;
+      overflow-y: auto;
+    }
+    .cart.active, .login.active {
+      right: 0;
+    }
+    .cart h2, .login h2 {
+      margin-top: 0;
+    }
+    .cart-item {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .cart-item img {
+      width: 50px;
+      margin-right: 10px;
+      border-radius: 5px;
+    }
+    .btn {
+      background: orange;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: darkorange;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,0.5);
+    }
+    .overlay.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛍 My Store</h1>
+    <div>
+      <button onclick="toggleLogin()">Login</button>
+      <button onclick="toggleCart()">Cart 🛒 (<span id="cart-count">0</span>)</button>
+    </div>
+  </header>
+
+  <section class="products" id="products"></section>
+
+  <!-- CART -->
+  <div class="cart" id="cart">
+    <h2>Your Cart</h2>
+    <div id="cart-items"></div>
+    <h3>Total: $<span id="cart-total">0</span></h3>
+    <button class="btn" onclick="checkout()">Checkout</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="login" id="login">
+    <h2>User Login/Register</h2>
+    <input id="username" type="text" placeholder="Enter username"><br><br>
+    <input id="password" type="password" placeholder="Enter password"><br><br>
+    <button class="btn" onclick="register()">Register</button>
+    <button class="btn" onclick="login()">Login</button>
+    <p id="user-msg"></p>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+  <script>
+    const products = [
+      {id:1, name:"Shoes", price:50, img:"Shoes.jpg"},
+      {id:2, name:"Watch", price:80, img:"Watch.jpg"},
+      {id:3, name:"Headphones", price:30, img:"Headphones.jpg"},
+      {id:4, name:"Bag", price:40, img:"Bag.jpg"},
+    ];
+
+    let cart = [];
+    let users = JSON.parse(localStorage.getItem("users")) || {};
+    let currentUser = localStorage.getItem("currentUser") || null;
+
+    // Render products
+    const productContainer = document.getElementById("products");
+    products.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "product";
+      div.innerHTML = `
+        <img src="${p.img}" alt="${p.name}">
+        <h3>${p.name}</h3>
+        <p>$${p.price}</p>
+        <button class="btn" onclick="addToCart(${p.id})">Add to Cart</button>
+      `;
+      productContainer.appendChild(div);
+    });
+
+    function addToCart(id){
+      const product = products.find(p=>p.id===id);
+      cart.push(product);
+      updateCart();
+    }
+
+    function updateCart(){
+      document.getElementById("cart-count").textContent = cart.length;
+      const cartItems = document.getElementById("cart-items");
+      cartItems.innerHTML = "";
+      let total=0;
+      cart.forEach(item=>{
+        total+=item.price;
+        cartItems.innerHTML+=`
+          <div class="cart-item">
+            <img src="${item.img}">
+            <div>
+              <p>${item.name}</p>
+              <p>$${item.price}</p>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById("cart-total").textContent = total;
+    }
+
+    function toggleCart(){
+      document.getElementById("cart").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+
+    function toggleLogin(){
+      document.getElementById("login").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+
+    function closeAll(){
+      document.getElementById("cart").classList.remove("active");
+      document.getElementById("login").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+    function register(){
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      if(users[user]){
+        document.getElementById("user-msg").textContent = "User already exists!";
+        return;
+      }
+      users[user] = pass;
+      localStorage.setItem("users", JSON.stringify(users));
+      document.getElementById("user-msg").textContent = "Registered successfully!";
+    }
+
+    function login(){
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      if(users[user] && users[user]===pass){
+        currentUser=user;
+        localStorage.setItem("currentUser", user);
+        document.getElementById("user-msg").textContent = "Welcome, "+user;
+      } else {
+        document.getElementById("user-msg").textContent = "Invalid credentials!";
+      }
+    }
+
+    function checkout(){
+      if(!currentUser){
+        alert("Please login to checkout!");
+        return;
+      }
+      alert("Order placed successfully by "+currentUser+"!");
+      cart=[];
+      updateCart();
+      closeAll();
+    }
+  </script>
+</body>
+</html>
